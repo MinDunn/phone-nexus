@@ -6,13 +6,16 @@ import java.util.UUID;
 public class JwtResponse {
     private String token;
     private String type = "Bearer";
+    private String refreshToken;
     private UUID id;
     private String username;
     private String email;
     private List<String> roles;
 
-    public JwtResponse(String accessToken, UUID id, String username, String email, List<String> roles) {
+    public JwtResponse(String accessToken, String refreshToken, UUID id, String username, String email,
+            List<String> roles) {
         this.token = accessToken;
+        this.refreshToken = refreshToken;
         this.id = id;
         this.username = username;
         this.email = email;

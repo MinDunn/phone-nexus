@@ -1,12 +1,15 @@
 package com.phonenexus.identities.services;
 
+import com.phonenexus.identities.models.RefreshToken;
 import com.phonenexus.identities.models.Role;
 import com.phonenexus.identities.models.RoleName;
 import com.phonenexus.identities.models.User;
 import com.phonenexus.identities.payload.request.LoginRequest;
 import com.phonenexus.identities.payload.request.SignupRequest;
+import com.phonenexus.identities.payload.request.TokenRefreshRequest;
 import com.phonenexus.identities.payload.response.JwtResponse;
 import com.phonenexus.identities.payload.response.MessageResponse;
+import com.phonenexus.identities.payload.response.TokenRefreshResponse;
 import com.phonenexus.identities.repositories.RoleRepository;
 import com.phonenexus.identities.repositories.UserRepository;
 import com.phonenexus.identities.security.jwt.JwtUtils;
@@ -42,6 +45,9 @@ public class AuthService {
     @Autowired
     JwtUtils jwtUtils;
 
+    @Autowired
+    RefreshTokenService refreshTokenService;
+
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
@@ -54,7 +60,10 @@ public class AuthService {
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
 
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+
         return ResponseEntity.ok(new JwtResponse(jwt,
+                refreshToken.getToken(),
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
@@ -116,5 +125,18 @@ public class AuthService {
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    }
+
+    public ResponseEntity<?> refreshToken(TokenRefreshRequest request) {
+        String requestRefreshToken = request.getRefreshToken();
+
+        return refreshTokenService.findByToken(requestRefreshToken)
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    String token = jwtUtils.generateTokenFromUsername(user.getUsername());
+                    return ResponseEntity.ok(new TokenRefreshResponse(token, requestRefreshToken));
+                })
+                .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
     }
 }
