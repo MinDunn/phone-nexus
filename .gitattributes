@@ -1,0 +1,11 @@
+# Mark Flutter generated directories as linguist-generated
+mobile/windows/** linguist-generated
+mobile/linux/** linguist-generated
+mobile/macos/** linguist-generated
+mobile/ios/** linguist-generated
+mobile/android/** linguist-generated
+
+# Mark build artifacts
+backend/**/target/** linguist-generated
+frontend/dist/** linguist-generated
+node_modules/** linguist-generated

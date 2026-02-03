@@ -1,0 +1,41 @@
+services:
+  # Database for Auth/Identities
+  identities-db:
+    image: postgres:15-alpine
+    container_name: phonenexus-identities-db
+    environment:
+      POSTGRES_DB: identities_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5431:5432"
+
+  # Database for Products
+  products-db:
+    image: postgres:15-alpine
+    container_name: phonenexus-products-db
+    environment:
+      POSTGRES_DB: products_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+
+  # Database for Sales/Orders
+  sales-db:
+    image: postgres:15-alpine
+    container_name: phonenexus-sales-db
+    environment:
+      POSTGRES_DB: sales_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+
+  # Adminer for DB management
+  adminer:
+    image: adminer
+    container_name: phonenexus-adminer
+    restart: always
+    ports:
+      - "8080:8080"
