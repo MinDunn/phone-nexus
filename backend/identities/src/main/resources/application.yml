@@ -2,9 +2,9 @@ spring:
   application:
     name: identities-service
   datasource:
-    url: jdbc:postgresql://localhost:5431/identities_db
-    username: user
-    password: password
+    url: jdbc:postgresql://localhost:5431/${IDENTITIES_DB_NAME:identities_db}
+    username: ${IDENTITIES_DB_USER:user}
+    password: ${IDENTITIES_DB_PASSWORD:password}
   jpa:
     hibernate:
       ddl-auto: update
@@ -25,6 +25,6 @@ eureka:
 # Security JWT configuration
 phonenexus:
   app:
-    jwtSecret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    jwtExpirationMs: 86400000 # 1 day
-    jwtRefreshExpirationMs: 604800000
+    jwtSecret: ${JWT_SECRET:phoneNexusSecretKeyForSecurityPurposesOnlyDoNotUseInProductionWithoutChangingIt}
+    jwtExpirationMs: ${JWT_EXPIRATION_MS:3600000}
+    jwtRefreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:86400000}

@@ -57,3 +57,7 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# PhoneNexus Secrets
+serviceAccountKey.json
+*.txt

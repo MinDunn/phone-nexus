@@ -38,6 +38,14 @@ public class JwtResponse {
         this.type = type;
     }
 
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
     public UUID getId() {
         return id;
     }

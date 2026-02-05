@@ -1,21 +1,41 @@
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   cloud:
     gateway:
       routes:
-        - id: identities-service
+        - id: identities-auth-public
           uri: lb://identities-service
           predicates:
             - Path=/api/v1/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                key-resolver: "#{@userKeyResolver}"
+        - id: identities-users-protected
+          uri: lb://identities-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - AuthenticationFilter
         - id: products-service
           uri: lb://products-service
           predicates:
             - Path=/api/v1/products/**
+          filters:
+            - AuthenticationFilter
         - id: sales-service
           uri: lb://sales-service
           predicates:
             - Path=/api/v1/orders/**
+          filters:
+            - AuthenticationFilter
 
 server:
   port: 8080

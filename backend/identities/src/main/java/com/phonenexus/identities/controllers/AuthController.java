@@ -1,5 +1,6 @@
 package com.phonenexus.identities.controllers;
 
+import com.phonenexus.identities.payload.request.FirebaseResetPasswordRequest;
 import com.phonenexus.identities.payload.request.LoginRequest;
 import com.phonenexus.identities.payload.request.SignupRequest;
 import com.phonenexus.identities.payload.request.TokenRefreshRequest;
@@ -28,5 +29,16 @@ public class AuthController {
     @PostMapping("/refreshtoken")
     public ResponseEntity<?> refreshtoken(@Valid @RequestBody TokenRefreshRequest request) {
         return authService.refreshToken(request);
+    }
+
+    @PostMapping("/logout")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> logoutUser() {
+        return authService.logoutUser();
+    }
+
+    @PostMapping("/forgot-password/firebase-reset")
+    public ResponseEntity<?> resetPasswordWithFirebase(@Valid @RequestBody FirebaseResetPasswordRequest request) {
+        return authService.resetPasswordWithFirebase(request);
     }
 }

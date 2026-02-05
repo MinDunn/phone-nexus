@@ -13,7 +13,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(columnNames = "username"),
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "phoneNumber")
 })
 public class User extends BaseEntity {
 

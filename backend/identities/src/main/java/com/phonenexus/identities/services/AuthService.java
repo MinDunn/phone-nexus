@@ -4,9 +4,14 @@ import com.phonenexus.identities.models.RefreshToken;
 import com.phonenexus.identities.models.Role;
 import com.phonenexus.identities.models.RoleName;
 import com.phonenexus.identities.models.User;
+import com.phonenexus.identities.payload.request.FirebaseResetPasswordRequest;
 import com.phonenexus.identities.payload.request.LoginRequest;
+import com.phonenexus.identities.payload.request.PasswordChangeRequest;
 import com.phonenexus.identities.payload.request.SignupRequest;
+import com.phonenexus.identities.payload.request.UpdateProfileRequest;
 import com.phonenexus.identities.payload.request.TokenRefreshRequest;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import com.phonenexus.identities.payload.response.JwtResponse;
 import com.phonenexus.identities.payload.response.MessageResponse;
 import com.phonenexus.identities.payload.response.TokenRefreshResponse;
@@ -23,9 +28,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.phonenexus.identities.models.RoleName;
+import com.phonenexus.identities.models.RefreshToken;
+import com.phonenexus.identities.models.Role;
+import com.phonenexus.identities.models.User;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +58,7 @@ public class AuthService {
     @Autowired
     RefreshTokenService refreshTokenService;
 
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
@@ -138,5 +149,62 @@ public class AuthService {
                     return ResponseEntity.ok(new TokenRefreshResponse(token, requestRefreshToken));
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
+    }
+
+    public ResponseEntity<?> logoutUser() {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+        refreshTokenService.deleteByUserId(userDetails.getId());
+        return ResponseEntity.ok(new MessageResponse("Log out successful!"));
+    }
+
+    public ResponseEntity<?> changePassword(PasswordChangeRequest request) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: User not found."));
+
+        if (!encoder.matches(request.getOldPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: Current password is not correct!"));
+        }
+
+        user.setPassword(encoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new MessageResponse("Password changed successfully!"));
+    }
+
+    public ResponseEntity<?> resetPasswordWithFirebase(FirebaseResetPasswordRequest request) {
+        try {
+            // Verify ID Token with Firebase Admin SDK
+            FirebaseAuth.getInstance().verifyIdToken(request.getIdToken());
+
+            // Optional: verify phone number matches what was sent
+            // if (!request.getPhoneNumber().equals(firebasePhoneNumber)) { ... }
+
+            User user = userRepository.findByPhoneNumber(request.getPhoneNumber())
+                    .orElseThrow(() -> new RuntimeException("Error: User not found with this phone number."));
+
+            user.setPassword(encoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            return ResponseEntity.ok(new MessageResponse("Password has been reset successfully via Firebase!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new MessageResponse("Error: Invalid Firebase token! " + e.getMessage()));
+        }
+    }
+
+    public ResponseEntity<?> updateProfile(java.util.UUID userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Error: User not found."));
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setPhoneNumber(request.getPhoneNumber());
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new MessageResponse("Profile updated successfully!"));
     }
 }

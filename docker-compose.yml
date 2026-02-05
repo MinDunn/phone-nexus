@@ -4,9 +4,9 @@ services:
     image: postgres:15-alpine
     container_name: phonenexus-identities-db
     environment:
-      POSTGRES_DB: identities_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${IDENTITIES_DB_NAME:-identities_db}
+      POSTGRES_USER: ${IDENTITIES_DB_USER:-user}
+      POSTGRES_PASSWORD: ${IDENTITIES_DB_PASSWORD:-password}
     ports:
       - "5431:5432"
 
@@ -15,9 +15,9 @@ services:
     image: postgres:15-alpine
     container_name: phonenexus-products-db
     environment:
-      POSTGRES_DB: products_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${PRODUCTS_DB_NAME:-products_db}
+      POSTGRES_USER: ${PRODUCTS_DB_USER:-user}
+      POSTGRES_PASSWORD: ${PRODUCTS_DB_PASSWORD:-password}
     ports:
       - "5432:5432"
 
@@ -26,9 +26,9 @@ services:
     image: postgres:15-alpine
     container_name: phonenexus-sales-db
     environment:
-      POSTGRES_DB: sales_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${SALES_DB_NAME:-sales_db}
+      POSTGRES_USER: ${SALES_DB_USER:-user}
+      POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:-password}
     ports:
       - "5433:5432"
 
@@ -39,3 +39,9 @@ services:
     restart: always
     ports:
       - "8080:8080"
+
+  redis:
+    image: redis:alpine
+    container_name: phonenexus-redis
+    ports:
+      - "6379:6379"
