@@ -20,6 +20,7 @@ public class UserDetailsImpl implements UserDetails {
     private String email;
     private String firstName;
     private String lastName;
+    private com.phonenexus.identities.models.UserStatus status;
 
     @JsonIgnore
     private String password;
@@ -27,7 +28,7 @@ public class UserDetailsImpl implements UserDetails {
     private Collection<? extends GrantedAuthority> authorities;
 
     public UserDetailsImpl(UUID id, String username, String email, String password,
-            String firstName, String lastName,
+            String firstName, String lastName, com.phonenexus.identities.models.UserStatus status,
             Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
@@ -35,6 +36,7 @@ public class UserDetailsImpl implements UserDetails {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.status = status;
         this.authorities = authorities;
     }
 
@@ -50,6 +52,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getPassword(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getStatus(),
                 authorities);
     }
 
@@ -67,6 +70,10 @@ public class UserDetailsImpl implements UserDetails {
 
     public String getLastName() {
         return lastName;
+    }
+
+    public com.phonenexus.identities.models.UserStatus getStatus() {
+        return status;
     }
 
     @Override

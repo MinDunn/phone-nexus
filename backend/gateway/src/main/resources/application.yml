@@ -24,16 +24,18 @@ spring:
             - Path=/api/v1/users/**
           filters:
             - AuthenticationFilter
-        - id: products-service
+
+        - id: products-service-public
           uri: lb://products-service
           predicates:
             - Path=/api/v1/products/**
-          filters:
-            - AuthenticationFilter
-        - id: sales-service
-          uri: lb://sales-service
+            - Method=GET
+
+        - id: products-service-protected
+          uri: lb://products-service
           predicates:
-            - Path=/api/v1/orders/**
+            - Path=/api/v1/products/**
+            - Method=POST,PUT,DELETE
           filters:
             - AuthenticationFilter
 

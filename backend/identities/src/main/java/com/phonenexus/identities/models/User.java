@@ -48,6 +48,10 @@ public class User extends BaseEntity {
     @Size(max = 15)
     private String phoneNumber;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
@@ -61,6 +65,15 @@ public class User extends BaseEntity {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.status = UserStatus.ACTIVE;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
     }
 
     // Builder-like pattern or just manual setters
@@ -75,6 +88,7 @@ public class User extends BaseEntity {
         private String firstName;
         private String lastName;
         private String phoneNumber;
+        private UserStatus status;
 
         public UserBuilder username(String username) {
             this.username = username;
@@ -106,9 +120,17 @@ public class User extends BaseEntity {
             return this;
         }
 
+        public UserBuilder status(UserStatus status) {
+            this.status = status;
+            return this;
+        }
+
         public User build() {
             User user = new User(username, email, password, firstName, lastName);
             user.setPhoneNumber(phoneNumber);
+            if (status != null) {
+                user.setStatus(status);
+            }
             return user;
         }
     }

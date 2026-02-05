@@ -10,16 +10,26 @@ public class JwtResponse {
     private UUID id;
     private String username;
     private String email;
+    private String status;
     private List<String> roles;
 
-    public JwtResponse(String accessToken, String refreshToken, UUID id, String username, String email,
+    public JwtResponse(String accessToken, String refreshToken, UUID id, String username, String email, String status,
             List<String> roles) {
         this.token = accessToken;
         this.refreshToken = refreshToken;
         this.id = id;
         this.username = username;
         this.email = email;
+        this.status = status;
         this.roles = roles;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getToken() {

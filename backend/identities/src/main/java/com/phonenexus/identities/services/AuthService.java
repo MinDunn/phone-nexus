@@ -13,8 +13,17 @@ import com.phonenexus.identities.payload.request.UpdateProfileRequest;
 import com.phonenexus.identities.payload.response.JwtResponse;
 import com.phonenexus.identities.payload.response.MessageResponse;
 import com.phonenexus.identities.payload.response.TokenRefreshResponse;
+import com.phonenexus.identities.models.UserLoginHistory;
+import com.phonenexus.identities.models.UserStatus;
+import com.phonenexus.identities.models.VerificationToken;
 import com.phonenexus.identities.repositories.RoleRepository;
+import com.phonenexus.identities.repositories.UserLoginHistoryRepository;
 import com.phonenexus.identities.repositories.UserRepository;
+import com.phonenexus.identities.repositories.VerificationTokenRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import java.time.LocalDateTime;
 import com.phonenexus.identities.security.jwt.JwtUtils;
 import com.phonenexus.identities.security.services.UserDetailsImpl;
 import com.google.firebase.auth.FirebaseAuth;
@@ -46,6 +55,9 @@ public class AuthService {
     RoleRepository roleRepository;
 
     @Autowired
+    UserLoginHistoryRepository loginHistoryRepository;
+
+    @Autowired
     PasswordEncoder encoder;
 
     @Autowired
@@ -53,6 +65,12 @@ public class AuthService {
 
     @Autowired
     RefreshTokenService refreshTokenService;
+
+    @Autowired
+    VerificationTokenRepository tokenRepository;
+
+    @Autowired
+    EmailService emailService;
 
     @Transactional
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
@@ -69,12 +87,41 @@ public class AuthService {
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
 
+        // Log Login History
+        logLogin(userDetails.getId(), userDetails.getUsername(), "SUCCESS");
+
         return ResponseEntity.ok(new JwtResponse(jwt,
                 refreshToken.getToken(),
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
+                userDetails.getStatus().name(),
                 roles));
+    }
+
+    private void logLogin(UUID userId, String username, String status) {
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
+                    .getRequest();
+            String ipAddress = request.getHeader("X-Forwarded-For");
+            if (ipAddress == null) {
+                ipAddress = request.getRemoteAddr();
+            }
+            String userAgent = request.getHeader("User-Agent");
+
+            UserLoginHistory history = UserLoginHistory.builder()
+                    .userId(userId)
+                    .username(username)
+                    .ipAddress(ipAddress)
+                    .userAgent(userAgent)
+                    .status(status)
+                    .loginTime(LocalDateTime.now())
+                    .build();
+            loginHistoryRepository.save(history);
+        } catch (Exception e) {
+            // Ignore logging errors to not block login
+            System.err.println("Failed to log login history: " + e.getMessage());
+        }
     }
 
     public ResponseEntity<?> registerUser(SignupRequest signUpRequest) {
@@ -116,9 +163,45 @@ public class AuthService {
         }
 
         user.setRoles(roles);
+        // Default to PENDING_VERIFICATION
+        user.setStatus(UserStatus.PENDING_VERIFICATION);
+        user = userRepository.save(user);
+
+        // Generate Verification Token
+        String token = UUID.randomUUID().toString();
+        VerificationToken verificationToken = new VerificationToken(token, user);
+        tokenRepository.save(verificationToken);
+
+        // Send Email (Async or Sync)
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), token);
+        } catch (Exception e) {
+            // Log error but don't fail registration completely?
+            // Or maybe bad request? For now, we log and proceed but warn user.
+            System.err.println("Failed to send email: " + e.getMessage());
+            return ResponseEntity.ok(new MessageResponse("User registered but failed to send verification email."));
+        }
+
+        return ResponseEntity
+                .ok(new MessageResponse("User registered successfully! Please check your email to verify."));
+    }
+
+    public ResponseEntity<?> verifyEmail(String token) {
+        VerificationToken verificationToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Token expired"));
+        }
+
+        User user = verificationToken.getUser();
+        user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
 
-        return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+        // Optional: delete token after usage
+        tokenRepository.delete(verificationToken);
+
+        return ResponseEntity.ok(new MessageResponse("Email verified successfully!"));
     }
 
     private Role getRole(RoleName roleName) {

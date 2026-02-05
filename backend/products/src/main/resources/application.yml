@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: products-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/${PRODUCTS_DB_NAME:products_db}
+    username: ${PRODUCTS_DB_USER:user}
+    password: ${PRODUCTS_DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: 8082
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# Swagger UI Configuration
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

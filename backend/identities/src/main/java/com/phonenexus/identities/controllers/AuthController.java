@@ -41,4 +41,9 @@ public class AuthController {
     public ResponseEntity<?> resetPasswordWithFirebase(@Valid @RequestBody FirebaseResetPasswordRequest request) {
         return authService.resetPasswordWithFirebase(request);
     }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        return authService.verifyEmail(token);
+    }
 }
