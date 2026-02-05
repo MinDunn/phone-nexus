@@ -48,12 +48,6 @@ public class User extends BaseEntity {
     @Size(max = 15)
     private String phoneNumber;
 
-    private String avatarUrl;
-
-    private boolean isActive = true;
-
-    private boolean isEmailVerified = false;
-
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
@@ -81,7 +75,6 @@ public class User extends BaseEntity {
         private String firstName;
         private String lastName;
         private String phoneNumber;
-        private String avatarUrl;
 
         public UserBuilder username(String username) {
             this.username = username;
@@ -113,15 +106,9 @@ public class User extends BaseEntity {
             return this;
         }
 
-        public UserBuilder avatarUrl(String avatarUrl) {
-            this.avatarUrl = avatarUrl;
-            return this;
-        }
-
         public User build() {
             User user = new User(username, email, password, firstName, lastName);
             user.setPhoneNumber(phoneNumber);
-            user.setAvatarUrl(avatarUrl);
             return user;
         }
     }
@@ -180,30 +167,6 @@ public class User extends BaseEntity {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
-    }
-
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-
-    public boolean isEmailVerified() {
-        return isEmailVerified;
-    }
-
-    public void setEmailVerified(boolean emailVerified) {
-        isEmailVerified = emailVerified;
     }
 
     public Set<Role> getRoles() {

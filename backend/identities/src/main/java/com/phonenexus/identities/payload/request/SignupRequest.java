@@ -2,7 +2,9 @@ package com.phonenexus.identities.payload.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
 import java.util.Set;
 
 public class SignupRequest {
@@ -27,9 +29,21 @@ public class SignupRequest {
     @NotBlank
     private String lastName;
 
+    @NotBlank
+    @Pattern(regexp = "^[0-9]{10,11}$", message = "Phone number must be 10-11 digits")
     private String phoneNumber;
 
     public SignupRequest() {
+    }
+
+    public SignupRequest(String username, String email, String password, String firstName, String lastName,
+            String phoneNumber) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
     }
 
     public String getUsername() {
