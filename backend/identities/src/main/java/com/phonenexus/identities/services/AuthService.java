@@ -21,10 +21,13 @@ import com.phonenexus.identities.repositories.UserLoginHistoryRepository;
 import com.phonenexus.identities.repositories.UserRepository;
 import com.phonenexus.identities.repositories.VerificationTokenRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import com.phonenexus.identities.events.UserEvent;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import java.time.LocalDateTime;
 import com.phonenexus.identities.security.jwt.JwtUtils;
+import org.springframework.beans.factory.annotation.Value;
 import com.phonenexus.identities.security.services.UserDetailsImpl;
 import com.google.firebase.auth.FirebaseAuth;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,8 +48,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
     @Autowired
     AuthenticationManager authenticationManager;
+
+    @Value("${phonenexus.app.verificationUrl}")
+    private String verificationUrl;
 
     @Autowired
     UserRepository userRepository;
@@ -70,7 +77,7 @@ public class AuthService {
     VerificationTokenRepository tokenRepository;
 
     @Autowired
-    EmailService emailService;
+    private RabbitTemplate rabbitTemplate;
 
     @Transactional
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
@@ -172,14 +179,22 @@ public class AuthService {
         VerificationToken verificationToken = new VerificationToken(token, user);
         tokenRepository.save(verificationToken);
 
-        // Send Email (Async or Sync)
+        // Send Verification Event via RabbitMQ
         try {
-            emailService.sendVerificationEmail(user.getEmail(), token);
+            String fullVerificationUrl = verificationUrl + "?token=" + token;
+            UserEvent event = new UserEvent(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getFirstName() + " " + user.getLastName(),
+                    fullVerificationUrl);
+
+            rabbitTemplate.convertAndSend(
+                    com.phonenexus.identities.config.RabbitMQConfig.EXCHANGE,
+                    com.phonenexus.identities.config.RabbitMQConfig.USER_ROUTING_KEY,
+                    event);
         } catch (Exception e) {
-            // Log error but don't fail registration completely?
-            // Or maybe bad request? For now, we log and proceed but warn user.
-            System.err.println("Failed to send email: " + e.getMessage());
-            return ResponseEntity.ok(new MessageResponse("User registered but failed to send verification email."));
+            log.error("Failed to publish user event for UserID: {}", user.getId(), e);
+            // We proceed with registration as the user is saved and token is in DB
         }
 
         return ResponseEntity

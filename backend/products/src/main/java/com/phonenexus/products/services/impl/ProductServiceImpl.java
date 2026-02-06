@@ -24,6 +24,8 @@ import com.phonenexus.products.payload.response.ProductItemResponse;
 import com.phonenexus.products.exceptions.ResourceNotFoundException;
 import com.phonenexus.products.repositories.RecentlyViewedProductRepository;
 import com.phonenexus.products.services.ProductService;
+import com.phonenexus.products.events.StockEvent;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -41,6 +43,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+        private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ProductServiceImpl.class);
 
         @Autowired
         private ProductRepository productRepository;
@@ -61,7 +64,10 @@ public class ProductServiceImpl implements ProductService {
         private CategoryRepository categoryRepository;
 
         @Autowired
-        private ProductItemRepository productItemRepository; // New injection
+        private ProductItemRepository productItemRepository;
+
+        @Autowired
+        private RabbitTemplate rabbitTemplate;
 
         @Override
         @Transactional
@@ -279,6 +285,29 @@ public class ProductServiceImpl implements ProductService {
                                 .changedBy("SYSTEM")
                                 .build();
                 historyRepository.save(history);
+
+                // Publish low stock alert if below threshold (e.g., 5)
+                if (variant.getStockQuantity() < 5) {
+                        publishStockAlert(variant);
+                }
+        }
+
+        private void publishStockAlert(ProductVariant variant) {
+                try {
+                        StockEvent event = new StockEvent(
+                                        variant.getId(),
+                                        variant.getSku(),
+                                        variant.getProduct().getName(),
+                                        variant.getStockQuantity());
+
+                        rabbitTemplate.convertAndSend(
+                                        com.phonenexus.products.config.RabbitMQConfig.EXCHANGE,
+                                        com.phonenexus.products.config.RabbitMQConfig.ADMIN_ROUTING_KEY,
+                                        event);
+                        // log.info("Published low stock alert for variant: {}", variant.getSku());
+                } catch (Exception e) {
+                        log.error("Failed to publish stock alert for variant: {}", variant.getSku(), e);
+                }
         }
 
         @Override

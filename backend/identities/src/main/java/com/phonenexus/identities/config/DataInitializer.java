@@ -11,6 +11,7 @@ import java.util.Arrays;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DataInitializer.class);
 
     @Autowired
     private RoleRepository roleRepository;
@@ -26,7 +27,7 @@ public class DataInitializer implements CommandLineRunner {
                 Role role = new Role();
                 role.setName(roleName);
                 roleRepository.save(role);
-                System.out.println("Initialized role: " + roleName);
+                log.info("Initialized role: {}", roleName);
             }
         });
     }

@@ -12,6 +12,8 @@ import com.phonenexus.sales.repositories.OrderStatusHistoryRepository;
 import com.phonenexus.sales.repositories.PaymentTransactionRepository;
 import com.phonenexus.sales.services.CartService;
 import com.phonenexus.sales.services.OrderService;
+import com.phonenexus.sales.events.OrderEvent;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +52,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private PaymentTransactionRepository paymentRepository;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Override
     @Transactional
@@ -105,7 +110,7 @@ public class OrderServiceImpl implements OrderService {
 
                 // Fetch available IMEIs for this variant
                 List<com.phonenexus.sales.dto.external.ProductItemExternalResponse> availableItems = productClient
-                        .getAvailableItems(cartItem.getVariantId(), "INTERNAL_SECRET", "ADMIN");
+                        .getAvailableItems(cartItem.getVariantId(), "INTERNAL-SERVICE-TOKEN-2026", "ADMIN");
 
                 if (availableItems.size() < cartItem.getQuantity()) {
                     throw new RuntimeException(
@@ -131,14 +136,15 @@ public class OrderServiceImpl implements OrderService {
                 }
 
                 // Reduce stock via Feign
-                productClient.reduceStock(cartItem.getVariantId(), cartItem.getQuantity(), "INTERNAL_SECRET");
+                productClient.reduceStock(cartItem.getVariantId(), cartItem.getQuantity(),
+                        "INTERNAL-SERVICE-TOKEN-2026");
                 processedItems.add(cartItem);
             }
         } catch (Exception e) {
             // MANUAL ROLLBACK: Increase stock for items that were already reduced
             for (CartItem item : processedItems) {
                 try {
-                    productClient.increaseStock(item.getVariantId(), item.getQuantity(), "INTERNAL_SECRET");
+                    productClient.increaseStock(item.getVariantId(), item.getQuantity(), "INTERNAL-SERVICE-TOKEN-2026");
                 } catch (Exception ex) {
                     log.error("CRITICAL: Failed to rollback stock for variant: {} during checkout of user {}",
                             item.getVariantId(), userId, ex);
@@ -230,9 +236,10 @@ public class OrderServiceImpl implements OrderService {
             if (newStatus == OrderStatus.RETURNED) {
                 // Restore stock and IMEI status
                 for (OrderItem item : order.getItems()) {
-                    productClient.increaseStock(item.getVariantId(), item.getQuantity(), "INTERNAL_SECRET");
+                    productClient.increaseStock(item.getVariantId(), item.getQuantity(), "INTERNAL-SERVICE-TOKEN-2026");
                     if (item.getImei() != null) {
-                        productClient.updateItemStatusByImei(item.getImei(), "AVAILABLE", "INTERNAL_SECRET");
+                        productClient.updateItemStatusByImei(item.getImei(), "AVAILABLE",
+                                "INTERNAL-SERVICE-TOKEN-2026");
                     }
                 }
                 // Update payment status if exists
@@ -245,12 +252,17 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(newStatus);
             // order = orderRepository.save(order); -> Managed
 
-            // Log history
+            // 1. Log history
             historyRepository.save(com.phonenexus.sales.models.OrderStatusHistory.builder()
                     .order(order)
                     .status(newStatus)
                     .note("Status updated from " + oldStatus + " to " + newStatus)
                     .build());
+
+            // 2. Publish Notification Event (for SHIPPED, COMPLETED, RETURNED)
+            if (List.of(OrderStatus.SHIPPED, OrderStatus.COMPLETED, OrderStatus.RETURNED).contains(newStatus)) {
+                publishOrderEvent(order);
+            }
         }
 
         return mapToResponse(order);
@@ -394,12 +406,15 @@ public class OrderServiceImpl implements OrderService {
             for (OrderItem item : order.getItems()) {
                 if (item.getImei() != null) {
                     try {
-                        productClient.updateItemStatusByImei(item.getImei(), "SOLD", "INTERNAL_SECRET");
+                        productClient.updateItemStatusByImei(item.getImei(), "SOLD", "INTERNAL-SERVICE-TOKEN-2026");
                     } catch (Exception e) {
                         log.error("Failed to mark IMEI {} as SOLD for order {}", item.getImei(), orderId, e);
                     }
                 }
             }
+
+            // Publish Notification Event for Order Confirmation (PAID)
+            publishOrderEvent(order);
         } else {
             transaction.setStatus(com.phonenexus.sales.models.PaymentStatus.FAILED);
             historyRepository.save(com.phonenexus.sales.models.OrderStatusHistory.builder()
@@ -447,6 +462,43 @@ public class OrderServiceImpl implements OrderService {
         // For this mock hardening, we treat userId="ADMIN" as a bypass.
         if (!order.getUserId().equals(userId) && !"ADMIN".equals(userId)) {
             throw new RuntimeException("Access denied: You do not own this order and are not an Admin.");
+        }
+    }
+
+    private void publishOrderEvent(Order order) {
+        try {
+            // Note: In a real app, 'email' and 'customerName' should come from the Identity
+            // service or be stored in Order.
+            // For now, we use placeholders as they aren't in the Order entity yet.
+            // Ideally, we'd fetch user details here via UserClient.
+            String userEmail = "customer-" + order.getUserId() + "@example.com";
+            String customerName = "Customer " + order.getUserId();
+
+            List<OrderEvent.OrderItemDetail> items = order.getItems().stream()
+                    .map(item -> new OrderEvent.OrderItemDetail(
+                            item.getProductName(),
+                            item.getSku(),
+                            item.getQuantity(),
+                            item.getPrice()))
+                    .collect(Collectors.toList());
+
+            OrderEvent event = new OrderEvent(
+                    order.getId(), // 1. UUID orderId
+                    order.getUserId(), // 2. String userId
+                    userEmail, // 3. String email
+                    customerName, // 4. String customerName
+                    order.getTotalAmount(), // 5. BigDecimal totalAmount
+                    order.getStatus().name(), // 6. String status (e.g., PAID, SHIPPED)
+                    items // 7. List<OrderEvent.OrderItemDetail>
+            );
+
+            rabbitTemplate.convertAndSend(
+                    com.phonenexus.sales.config.RabbitMQConfig.EXCHANGE,
+                    "order.created", // Matches order.* pattern
+                    event);
+            log.info("Published order event for ID: {} with status: {}", order.getId(), order.getStatus());
+        } catch (Exception e) {
+            log.error("Failed to publish order event for ID: {}", order.getId(), e);
         }
     }
 }

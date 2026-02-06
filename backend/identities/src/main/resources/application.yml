@@ -39,3 +39,4 @@ phonenexus:
     jwtSecret: ${JWT_SECRET:phoneNexusSecretKeyForSecurityPurposesOnlyDoNotUseInProductionWithoutChangingIt}
     jwtExpirationMs: ${JWT_EXPIRATION_MS:3600000}
     jwtRefreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:86400000}
+    verificationUrl: ${VERIFICATION_URL:http://localhost:8081/api/auth/verify}

@@ -12,6 +12,7 @@ import java.io.InputStream;
 
 @Configuration
 public class FirebaseConfig {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FirebaseConfig.class);
 
     @PostConstruct
     public void initialize() {
@@ -24,11 +25,11 @@ public class FirebaseConfig {
 
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
-                System.out.println("Firebase Admin SDK has been initialized.");
+                log.info("Firebase Admin SDK has been initialized.");
             }
         } catch (IOException e) {
-            System.err.println("Firebase initialization error: " + e.getMessage());
-            System.err.println("Please ensure 'src/main/resources/serviceAccountKey.json' exists.");
+            log.error("Firebase initialization error: {}", e.getMessage(), e);
+            log.error("Please ensure 'src/main/resources/serviceAccountKey.json' exists.");
         }
     }
 }
