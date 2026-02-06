@@ -23,14 +23,26 @@ public class ProductHistoryController {
 
     @GetMapping("/product/{productId}")
     @Operation(summary = "Get history by Product ID")
-    public ResponseEntity<List<ProductHistoryResponse>> getHistoryByProduct(@PathVariable UUID productId) {
+    public ResponseEntity<List<ProductHistoryResponse>> getHistoryByProduct(
+            @PathVariable UUID productId,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         List<ProductHistory> historyList = historyRepository.findByProductIdOrderByChangedAtDesc(productId);
         return ResponseEntity.ok(historyList.stream().map(this::mapToResponse).collect(Collectors.toList()));
     }
 
     @GetMapping("/variant/{variantId}")
     @Operation(summary = "Get history by Variant ID")
-    public ResponseEntity<List<ProductHistoryResponse>> getHistoryByVariant(@PathVariable UUID variantId) {
+    public ResponseEntity<List<ProductHistoryResponse>> getHistoryByVariant(
+            @PathVariable UUID variantId,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         List<ProductHistory> historyList = historyRepository.findByVariantIdOrderByChangedAtDesc(variantId);
         return ResponseEntity.ok(historyList.stream().map(this::mapToResponse).collect(Collectors.toList()));
     }

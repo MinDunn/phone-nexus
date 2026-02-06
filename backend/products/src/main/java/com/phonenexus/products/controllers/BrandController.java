@@ -24,13 +24,24 @@ public class BrandController {
 
     @PostMapping
     @Operation(summary = "Create a new brand")
-    public ResponseEntity<BrandResponse> createBrand(@Valid @RequestBody BrandRequest request) {
+    public ResponseEntity<BrandResponse> createBrand(
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody BrandRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(brandService.createBrand(request));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing brand")
-    public ResponseEntity<BrandResponse> updateBrand(@PathVariable UUID id, @Valid @RequestBody BrandRequest request) {
+    public ResponseEntity<BrandResponse> updateBrand(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody BrandRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(brandService.updateBrand(id, request));
     }
 
@@ -48,7 +59,12 @@ public class BrandController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete a brand")
-    public ResponseEntity<Void> deleteBrand(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteBrand(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         brandService.deleteBrand(id);
         return ResponseEntity.noContent().build();
     }

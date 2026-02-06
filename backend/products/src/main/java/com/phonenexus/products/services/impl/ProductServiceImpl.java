@@ -16,6 +16,12 @@ import com.phonenexus.products.repositories.ProductHistoryRepository;
 import com.phonenexus.products.repositories.specs.ProductSpecification;
 import com.phonenexus.products.models.ProductHistory;
 import com.phonenexus.products.models.RecentlyViewedProduct;
+import com.phonenexus.products.models.ItemStatus;
+import com.phonenexus.products.models.ProductItem;
+import com.phonenexus.products.repositories.ProductItemRepository;
+import com.phonenexus.products.payload.request.BatchImeiImportRequest;
+import com.phonenexus.products.payload.response.ProductItemResponse;
+import com.phonenexus.products.exceptions.ResourceNotFoundException;
 import com.phonenexus.products.repositories.RecentlyViewedProductRepository;
 import com.phonenexus.products.services.ProductService;
 import java.time.LocalDateTime;
@@ -53,6 +59,9 @@ public class ProductServiceImpl implements ProductService {
 
         @Autowired
         private CategoryRepository categoryRepository;
+
+        @Autowired
+        private ProductItemRepository productItemRepository; // New injection
 
         @Override
         @Transactional
@@ -113,6 +122,8 @@ public class ProductServiceImpl implements ProductService {
         public ProductResponse getProductById(UUID id) {
                 Product product = productRepository.findById(id)
                                 .orElseThrow(() -> new RuntimeException("Error: Product not found."));
+                product.incrementViewCount();
+                productRepository.save(product);
                 return mapToResponse(product);
         }
 
@@ -188,6 +199,7 @@ public class ProductServiceImpl implements ProductService {
 
         @Override
         @Transactional
+        @CacheEvict(value = "products", key = "#variantRepository.findById(#variantId).get().product.id")
         public ProductVariantResponse updateVariant(UUID variantId, ProductVariantRequest request) {
                 ProductVariant variant = variantRepository.findById(variantId)
                                 .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
@@ -221,6 +233,7 @@ public class ProductServiceImpl implements ProductService {
                 variant.setStorageCapacity(request.getStorageCapacity());
                 variant.setRam(request.getRam());
                 variant.setPrice(request.getPrice());
+                variant.setCostPrice(request.getCostPrice());
                 variant.setStockQuantity(request.getStockQuantity());
                 variant.setImageUrl(request.getImageUrl());
 
@@ -230,11 +243,69 @@ public class ProductServiceImpl implements ProductService {
 
         @Override
         @Transactional
+        @CacheEvict(value = "products", key = "#variantRepository.findById(#variantId).get().product.id")
         public void deleteVariant(UUID variantId) {
                 ProductVariant variant = variantRepository.findById(variantId)
                                 .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
                 variant.setDeleted(true);
                 variantRepository.save(variant);
+        }
+
+        @Override
+        @Transactional
+        @CacheEvict(value = "products", key = "#variantRepository.findById(#variantId).get().product.id")
+        public void reduceStock(UUID variantId, Integer quantity) {
+                ProductVariant variant = variantRepository.findByIdWithLock(variantId)
+                                .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
+
+                if (variant.getStockQuantity() < quantity) {
+                        throw new RuntimeException("Error: Not enough stock for variant: " + variant.getSku());
+                }
+
+                variant.setStockQuantity(variant.getStockQuantity() - quantity);
+                variantRepository.save(variant);
+
+                // Log history for stock reduction
+                ProductHistory history = ProductHistory.builder()
+                                .productId(variant.getProduct().getId())
+                                .variantId(variant.getId())
+                                .sku(variant.getSku())
+                                .oldPrice(variant.getPrice())
+                                .newPrice(variant.getPrice())
+                                .oldStock(variant.getStockQuantity() + quantity)
+                                .newStock(variant.getStockQuantity())
+                                .actionType("ORDER_REDUCE_STOCK")
+                                .changedAt(LocalDateTime.now())
+                                .changedBy("SYSTEM")
+                                .build();
+                historyRepository.save(history);
+        }
+
+        @Override
+        @Transactional
+        @CacheEvict(value = "products", key = "#variantRepository.findByIdWithLock(#variantId).get().product.id")
+        public void increaseStock(UUID variantId, Integer quantity) {
+                // Use findByIdWithLock for atomic restoration
+                ProductVariant variant = variantRepository.findByIdWithLock(variantId)
+                                .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
+
+                variant.setStockQuantity(variant.getStockQuantity() + quantity);
+                variantRepository.save(variant);
+
+                // Log history for stock increase (restock from cancellation)
+                ProductHistory history = ProductHistory.builder()
+                                .productId(variant.getProduct().getId())
+                                .variantId(variant.getId())
+                                .sku(variant.getSku())
+                                .oldPrice(variant.getPrice())
+                                .newPrice(variant.getPrice())
+                                .oldStock(variant.getStockQuantity() - quantity)
+                                .newStock(variant.getStockQuantity())
+                                .actionType("ORDER_RESTORE_STOCK")
+                                .changedAt(LocalDateTime.now())
+                                .changedBy("SYSTEM")
+                                .build();
+                historyRepository.save(history);
         }
 
         @Override
@@ -272,6 +343,13 @@ public class ProductServiceImpl implements ProductService {
                                 .collect(Collectors.toList());
         }
 
+        @Override
+        public List<ProductResponse> getPopularProducts() {
+                return productRepository.findTop10ByIsDeletedFalseOrderByViewCountDesc().stream()
+                                .map(this::mapToResponse)
+                                .collect(Collectors.toList());
+        }
+
         private ProductResponse mapToResponse(Product product) {
                 List<ProductVariantResponse> variants = product.getVariants().stream()
                                 .filter(v -> !v.isDeleted())
@@ -300,5 +378,80 @@ public class ProductServiceImpl implements ProductService {
                                 variant.getPrice(),
                                 variant.getStockQuantity(),
                                 variant.getImageUrl());
+        }
+
+        @Override
+        @Transactional
+        public List<ProductItemResponse> importItems(UUID variantId, BatchImeiImportRequest request) {
+                ProductVariant variant = variantRepository.findById(variantId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Variant not found: " + variantId));
+
+                List<ProductItem> items = request.getImeis().stream()
+                                .map(imei -> {
+                                        if (productItemRepository.findByImei(imei).isPresent()) {
+                                                throw new RuntimeException(
+                                                                "IMEI " + imei + " already exists in system");
+                                        }
+                                        return ProductItem.builder()
+                                                        .variant(variant)
+                                                        .imei(imei)
+                                                        .costPrice(request.getCostPrice())
+                                                        .status(ItemStatus.AVAILABLE)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
+
+                List<ProductItem> savedItems = productItemRepository.saveAll(items);
+
+                // Update stock quantity automatically
+                variant.setStockQuantity(variant.getStockQuantity() + savedItems.size());
+                variantRepository.save(variant);
+
+                return savedItems.stream()
+                                .map(item -> new ProductItemResponse(
+                                                item.getId(),
+                                                item.getImei(),
+                                                item.getCostPrice(),
+                                                item.getStatus(),
+                                                item.getCreatedAt(),
+                                                item.getSoldAt()))
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<ProductItemResponse> getItemsByVariant(UUID variantId) {
+                return productItemRepository.findByVariantIdAndStatus(variantId, ItemStatus.AVAILABLE).stream()
+                                .map(item -> new ProductItemResponse(
+                                                item.getId(),
+                                                item.getImei(),
+                                                item.getCostPrice(),
+                                                item.getStatus(),
+                                                item.getCreatedAt(),
+                                                item.getSoldAt()))
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        @Transactional
+        public void updateItemStatus(UUID itemId, ItemStatus status) {
+                ProductItem item = productItemRepository.findById(itemId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemId));
+                item.setStatus(status);
+                if (status == ItemStatus.SOLD) {
+                        item.setSoldAt(LocalDateTime.now());
+                }
+                productItemRepository.save(item);
+        }
+
+        @Override
+        @Transactional
+        public void updateItemStatusByImei(String imei, ItemStatus status) {
+                ProductItem item = productItemRepository.findByImei(imei)
+                                .orElseThrow(() -> new ResourceNotFoundException("Item not found with IMEI: " + imei));
+                item.setStatus(status);
+                if (status == ItemStatus.SOLD) {
+                        item.setSoldAt(LocalDateTime.now());
+                }
+                productItemRepository.save(item);
         }
 }

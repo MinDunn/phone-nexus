@@ -28,15 +28,24 @@ public class ProductController {
     @PostMapping
     @Operation(summary = "Create a new product with initial variants")
     public ResponseEntity<ProductResponse> createProduct(
+            @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody ProductRequest productRequest,
             @Valid @RequestBody List<ProductVariantRequest> variantRequests) {
+
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(productService.createProduct(productRequest, variantRequests));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update product core information")
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable UUID id,
+            @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody ProductRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
@@ -97,7 +106,12 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete a product and all its variants")
-    public ResponseEntity<Void> deleteProduct(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
@@ -107,21 +121,104 @@ public class ProductController {
     @PostMapping("/{productId}/variants")
     @Operation(summary = "Add a new variant to an existing product")
     public ResponseEntity<ProductVariantResponse> addVariant(@PathVariable UUID productId,
+            @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody ProductVariantRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(productService.addVariant(productId, request));
     }
 
     @PutMapping("/variants/{variantId}")
     @Operation(summary = "Update an existing variant")
     public ResponseEntity<ProductVariantResponse> updateVariant(@PathVariable UUID variantId,
+            @RequestHeader(value = "X-Role", required = false) String role,
             @Valid @RequestBody ProductVariantRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(productService.updateVariant(variantId, request));
     }
 
     @DeleteMapping("/variants/{variantId}")
     @Operation(summary = "Soft delete a variant")
-    public ResponseEntity<Void> deleteVariant(@PathVariable UUID variantId) {
+    public ResponseEntity<Void> deleteVariant(
+            @PathVariable UUID variantId,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         productService.deleteVariant(variantId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/variants/{variantId}/reduce-stock")
+    @Operation(summary = "Reduce stock for a variant (Internal use)")
+    public ResponseEntity<Void> reduceStock(
+            @PathVariable UUID variantId,
+            @RequestParam Integer quantity,
+            @RequestHeader(value = "X-Internal-Token", required = false) String token) {
+
+        if (!"INTERNAL-SERVICE-TOKEN-2026".equals(token)) {
+            return ResponseEntity.status(403).build();
+        }
+        productService.reduceStock(variantId, quantity);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/variants/{variantId}/items/batch")
+    @Operation(summary = "Batch import IMEIs for a product variant")
+    public ResponseEntity<List<com.phonenexus.products.payload.response.ProductItemResponse>> importItems(
+            @PathVariable UUID variantId,
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody com.phonenexus.products.payload.request.BatchImeiImportRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(productService.importItems(variantId, request));
+    }
+
+    @GetMapping("/variants/{variantId}/items")
+    @Operation(summary = "Get available items (IMEIs) for a variant")
+    public ResponseEntity<List<com.phonenexus.products.payload.response.ProductItemResponse>> getItems(
+            @PathVariable UUID variantId,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(productService.getItemsByVariant(variantId));
+    }
+
+    @PutMapping("/items/imei/{imei}/status")
+    @Operation(summary = "Update item status by IMEI (Internal use)")
+    public ResponseEntity<Void> updateItemStatusByImei(
+            @PathVariable String imei,
+            @RequestParam com.phonenexus.products.models.ItemStatus status,
+            @RequestHeader(value = "X-Internal-Token", required = false) String token) {
+        if (!"INTERNAL_SECRET".equals(token)) {
+            return ResponseEntity.status(403).build();
+        }
+        productService.updateItemStatusByImei(imei, status);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/variants/{variantId}/increase-stock")
+    @Operation(summary = "Increase stock for a variant (Internal use)")
+    public ResponseEntity<Void> increaseStock(
+            @PathVariable UUID variantId,
+            @RequestParam Integer quantity,
+            @RequestHeader(value = "X-Internal-Token", required = false) String token) {
+
+        if (!"INTERNAL-SERVICE-TOKEN-2026".equals(token)) {
+            return ResponseEntity.status(403).build();
+        }
+        productService.increaseStock(variantId, quantity);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/popular")
+    @Operation(summary = "Get top 10 most viewed products")
+    public ResponseEntity<List<ProductResponse>> getPopularProducts() {
+        return ResponseEntity.ok(productService.getPopularProducts());
     }
 }

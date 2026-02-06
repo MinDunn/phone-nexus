@@ -25,7 +25,12 @@ public class CategoryController {
 
     @PostMapping
     @Operation(summary = "Create a new category")
-    public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CategoryRequest request) {
+    public ResponseEntity<CategoryResponse> createCategory(
+            @RequestHeader(value = "X-Role", required = false) String role,
+            @Valid @RequestBody CategoryRequest request) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(categoryService.createCategory(request));
     }
 
@@ -62,7 +67,12 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete a category")
-    public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }

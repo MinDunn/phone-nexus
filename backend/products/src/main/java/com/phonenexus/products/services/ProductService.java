@@ -11,34 +11,50 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProductService {
-    ProductResponse createProduct(ProductRequest request, List<ProductVariantRequest> variantRequests);
+        ProductResponse createProduct(ProductRequest request, List<ProductVariantRequest> variantRequests);
 
-    ProductResponse updateProduct(UUID id, ProductRequest request);
+        ProductResponse updateProduct(UUID id, ProductRequest request);
 
-    ProductResponse getProductById(UUID id);
+        ProductResponse getProductById(UUID id);
 
-    Page<ProductResponse> getAllProducts(Pageable pageable);
+        Page<ProductResponse> getAllProducts(Pageable pageable);
 
-    Page<ProductResponse> getProductsByCategory(UUID categoryId, Pageable pageable);
+        Page<ProductResponse> getProductsByCategory(UUID categoryId, Pageable pageable);
 
-    Page<ProductResponse> getProductsByBrand(UUID brandId, Pageable pageable);
+        Page<ProductResponse> getProductsByBrand(UUID brandId, Pageable pageable);
 
-    Page<ProductResponse> searchProducts(String name, Pageable pageable);
+        Page<ProductResponse> searchProducts(String name, Pageable pageable);
 
-    Page<ProductResponse> filterProducts(UUID brandId, UUID categoryId, java.math.BigDecimal minPrice,
-            java.math.BigDecimal maxPrice, String name, Pageable pageable);
+        Page<ProductResponse> filterProducts(UUID brandId, UUID categoryId, java.math.BigDecimal minPrice,
+                        java.math.BigDecimal maxPrice, String name, Pageable pageable);
 
-    void deleteProduct(UUID id);
+        void deleteProduct(UUID id);
 
-    // Recently Viewed
-    void logView(String userId, UUID productId);
+        // Recently Viewed
+        void logView(String userId, UUID productId);
 
-    List<ProductResponse> getRecentlyViewed(String userId);
+        List<ProductResponse> getRecentlyViewed(String userId);
 
-    // Variant Management
-    ProductVariantResponse addVariant(UUID productId, ProductVariantRequest request);
+        // Variant Management
+        ProductVariantResponse addVariant(UUID productId, ProductVariantRequest request);
 
-    ProductVariantResponse updateVariant(UUID variantId, ProductVariantRequest request);
+        ProductVariantResponse updateVariant(UUID variantId, ProductVariantRequest request);
 
-    void deleteVariant(UUID variantId);
+        void deleteVariant(UUID variantId);
+
+        void reduceStock(UUID variantId, Integer quantity);
+
+        void increaseStock(UUID variantId, Integer quantity);
+
+        List<ProductResponse> getPopularProducts();
+
+        // IMEI Unit Management
+        List<com.phonenexus.products.payload.response.ProductItemResponse> importItems(UUID variantId,
+                        com.phonenexus.products.payload.request.BatchImeiImportRequest request);
+
+        List<com.phonenexus.products.payload.response.ProductItemResponse> getItemsByVariant(UUID variantId);
+
+        void updateItemStatus(UUID itemId, com.phonenexus.products.models.ItemStatus status);
+
+        void updateItemStatusByImei(String imei, com.phonenexus.products.models.ItemStatus status);
 }

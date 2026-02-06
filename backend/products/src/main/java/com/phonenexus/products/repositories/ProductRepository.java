@@ -18,4 +18,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     Page<Product> findByBrandIdAndIsDeletedFalse(UUID brandId, Pageable pageable);
 
     Page<Product> findByNameContainingIgnoreCaseAndIsDeletedFalse(String name, Pageable pageable);
+
+    java.util.List<Product> findTop10ByIsDeletedFalseOrderByViewCountDesc();
 }

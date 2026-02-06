@@ -279,4 +279,49 @@ public class AuthService {
 
         return ResponseEntity.ok(new MessageResponse("Profile updated successfully!"));
     }
+
+    // --- Admin Methods ---
+
+    public org.springframework.data.domain.Page<com.phonenexus.identities.payload.response.UserResponse> getAllUsers(
+            org.springframework.data.domain.Pageable pageable) {
+        return userRepository.findAll(pageable).map(this::mapToResponse);
+    }
+
+    @Transactional
+    public void updateUserStatus(UUID userId, UserStatus status) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Error: User not found."));
+        user.setStatus(status);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateUserRole(UUID userId, Set<String> strRoles) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Error: User not found."));
+
+        Set<Role> roles = new HashSet<>();
+        strRoles.forEach(role -> {
+            switch (role.toLowerCase()) {
+                case "admin" -> roles.add(getRole(RoleName.ROLE_ADMIN));
+                case "staff" -> roles.add(getRole(RoleName.ROLE_STAFF));
+                default -> roles.add(getRole(RoleName.ROLE_USER));
+            }
+        });
+        user.setRoles(roles);
+        userRepository.save(user);
+    }
+
+    private com.phonenexus.identities.payload.response.UserResponse mapToResponse(User user) {
+        return com.phonenexus.identities.payload.response.UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .status(user.getStatus().name())
+                .roles(user.getRoles().stream().map(r -> r.getName().name()).collect(Collectors.toList()))
+                .build();
+    }
 }

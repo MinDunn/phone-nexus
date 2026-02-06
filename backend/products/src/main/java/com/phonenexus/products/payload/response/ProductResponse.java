@@ -22,7 +22,6 @@ public class ProductResponse {
         this.brandId = brandId;
         this.brandName = brandName;
         this.categoryId = categoryId;
-        this.categoryId = categoryId;
         this.categoryName = categoryName;
         this.status = status;
         this.variants = variants;

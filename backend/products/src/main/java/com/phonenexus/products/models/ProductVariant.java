@@ -29,6 +29,9 @@ public class ProductVariant extends BaseEntity {
     @Column(nullable = false)
     private BigDecimal price;
 
+    @Column(name = "cost_price")
+    private BigDecimal costPrice;
+
     @Column(nullable = false)
     private Integer stockQuantity = 0;
 
@@ -38,13 +41,14 @@ public class ProductVariant extends BaseEntity {
     }
 
     public ProductVariant(Product product, String sku, String color, String storageCapacity, String ram,
-            BigDecimal price, Integer stockQuantity, String imageUrl) {
+            BigDecimal price, BigDecimal costPrice, Integer stockQuantity, String imageUrl) {
         this.product = product;
         this.sku = sku;
         this.color = color;
         this.storageCapacity = storageCapacity;
         this.ram = ram;
         this.price = price;
+        this.costPrice = costPrice;
         this.stockQuantity = stockQuantity;
         this.imageUrl = imageUrl;
     }
@@ -105,6 +109,14 @@ public class ProductVariant extends BaseEntity {
         this.price = price;
     }
 
+    public BigDecimal getCostPrice() {
+        return costPrice;
+    }
+
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
+    }
+
     public Integer getStockQuantity() {
         return stockQuantity;
     }
@@ -129,6 +141,7 @@ public class ProductVariant extends BaseEntity {
         private String storageCapacity;
         private String ram;
         private BigDecimal price;
+        private BigDecimal costPrice;
         private Integer stockQuantity;
         private String imageUrl;
 
@@ -162,6 +175,11 @@ public class ProductVariant extends BaseEntity {
             return this;
         }
 
+        public ProductVariantBuilder costPrice(BigDecimal costPrice) {
+            this.costPrice = costPrice;
+            return this;
+        }
+
         public ProductVariantBuilder stockQuantity(Integer stockQuantity) {
             this.stockQuantity = stockQuantity;
             return this;
@@ -173,7 +191,8 @@ public class ProductVariant extends BaseEntity {
         }
 
         public ProductVariant build() {
-            return new ProductVariant(product, sku, color, storageCapacity, ram, price, stockQuantity, imageUrl);
+            return new ProductVariant(product, sku, color, storageCapacity, ram, price, costPrice, stockQuantity,
+                    imageUrl);
         }
     }
 

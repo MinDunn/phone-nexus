@@ -19,6 +19,9 @@ public class ProductVariantRequest {
     @PositiveOrZero
     private BigDecimal price;
 
+    @PositiveOrZero
+    private BigDecimal costPrice;
+
     @NotNull
     @PositiveOrZero
     private Integer stockQuantity;
@@ -63,6 +66,14 @@ public class ProductVariantRequest {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public BigDecimal getCostPrice() {
+        return costPrice;
+    }
+
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
     }
 
     public Integer getStockQuantity() {

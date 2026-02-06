@@ -20,6 +20,9 @@ public class Product extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "view_count", nullable = false)
+    private Long viewCount = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ProductStatus status = ProductStatus.DRAFT;
@@ -110,6 +113,21 @@ public class Product extends BaseEntity {
     public void removeVariant(ProductVariant variant) {
         variants.remove(variant);
         variant.setProduct(null);
+    }
+
+    public Long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(Long viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public void incrementViewCount() {
+        if (this.viewCount == null) {
+            this.viewCount = 0L;
+        }
+        this.viewCount++;
     }
 
     // Builder Pattern

@@ -1,0 +1,40 @@
+package com.phonenexus.sales.clients;
+
+import com.phonenexus.sales.dto.external.ProductExternalResponse;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.UUID;
+
+@FeignClient(name = "products-service", url = "${app.products-service.url:http://localhost:8081}")
+public interface ProductClient {
+
+    @GetMapping("/api/v1/products/{id}")
+    ProductExternalResponse getProductById(@PathVariable("id") UUID id);
+
+    @PostMapping("/api/v1/products/variants/{variantId}/reduce-stock")
+    void reduceStock(@PathVariable("variantId") UUID variantId, @RequestParam("quantity") Integer quantity,
+            @RequestHeader("X-Internal-Token") String token);
+
+    @PostMapping("/variants/{variantId}/increase-stock")
+    void increaseStock(@PathVariable UUID variantId, @RequestParam Integer quantity,
+            @RequestHeader("X-Internal-Token") String token);
+
+    @GetMapping("/variants/{variantId}/items")
+    List<com.phonenexus.sales.dto.external.ProductItemExternalResponse> getAvailableItems(
+            @PathVariable UUID variantId,
+            @RequestHeader("X-Internal-Token") String token,
+            @RequestHeader("X-Role") String role);
+
+    @PutMapping("/items/imei/{imei}/status")
+    void updateItemStatusByImei(
+            @PathVariable String imei,
+            @RequestParam("status") String status,
+            @RequestHeader("X-Internal-Token") String token);
+}
