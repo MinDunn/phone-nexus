@@ -92,7 +92,6 @@ public class ProductServiceImpl implements ProductService {
                                         .storageCapacity(vr.getStorageCapacity())
                                         .ram(vr.getRam())
                                         .price(vr.getPrice())
-                                        .stockQuantity(vr.getStockQuantity())
                                         .imageUrl(vr.getImageUrl())
                                         .build();
                         product.addVariant(variant);
@@ -194,7 +193,6 @@ public class ProductServiceImpl implements ProductService {
                                 .storageCapacity(request.getStorageCapacity())
                                 .ram(request.getRam())
                                 .price(request.getPrice())
-                                .stockQuantity(request.getStockQuantity())
                                 .imageUrl(request.getImageUrl())
                                 .build();
 
@@ -213,23 +211,16 @@ public class ProductServiceImpl implements ProductService {
                 // Check for Price or Stock changes
                 boolean priceChanged = request.getPrice() != null
                                 && variant.getPrice().compareTo(request.getPrice()) != 0;
-                boolean stockChanged = request.getStockQuantity() != null
-                                && !variant.getStockQuantity().equals(request.getStockQuantity());
-
-                if (priceChanged || stockChanged) {
+                if (priceChanged) {
                         ProductHistory history = ProductHistory.builder()
                                         .productId(variant.getProduct().getId())
                                         .variantId(variant.getId())
                                         .sku(variant.getSku())
                                         .oldPrice(variant.getPrice())
-                                        .newPrice(priceChanged ? request.getPrice() : variant.getPrice())
-                                        .oldStock(variant.getStockQuantity())
-                                        .newStock(stockChanged ? request.getStockQuantity()
-                                                        : variant.getStockQuantity())
-                                        .actionType(priceChanged && stockChanged ? "UPDATE_PRICE_STOCK"
-                                                        : (priceChanged ? "UPDATE_PRICE" : "UPDATE_STOCK"))
+                                        .newPrice(request.getPrice())
+                                        .actionType("UPDATE_PRICE")
                                         .changedAt(LocalDateTime.now())
-                                        .changedBy("SYSTEM") // Placeholder, ideally get from SecurityContext
+                                        .changedBy("SYSTEM")
                                         .build();
                         historyRepository.save(history);
                 }
@@ -239,8 +230,6 @@ public class ProductServiceImpl implements ProductService {
                 variant.setStorageCapacity(request.getStorageCapacity());
                 variant.setRam(request.getRam());
                 variant.setPrice(request.getPrice());
-                variant.setCostPrice(request.getCostPrice());
-                variant.setStockQuantity(request.getStockQuantity());
                 variant.setImageUrl(request.getImageUrl());
 
                 variant = variantRepository.save(variant);
@@ -261,35 +250,7 @@ public class ProductServiceImpl implements ProductService {
         @Transactional
         @CacheEvict(value = "products", key = "#variantRepository.findById(#variantId).get().product.id")
         public void reduceStock(UUID variantId, Integer quantity) {
-                ProductVariant variant = variantRepository.findByIdWithLock(variantId)
-                                .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
-
-                if (variant.getStockQuantity() < quantity) {
-                        throw new RuntimeException("Error: Not enough stock for variant: " + variant.getSku());
-                }
-
-                variant.setStockQuantity(variant.getStockQuantity() - quantity);
-                variantRepository.save(variant);
-
-                // Log history for stock reduction
-                ProductHistory history = ProductHistory.builder()
-                                .productId(variant.getProduct().getId())
-                                .variantId(variant.getId())
-                                .sku(variant.getSku())
-                                .oldPrice(variant.getPrice())
-                                .newPrice(variant.getPrice())
-                                .oldStock(variant.getStockQuantity() + quantity)
-                                .newStock(variant.getStockQuantity())
-                                .actionType("ORDER_REDUCE_STOCK")
-                                .changedAt(LocalDateTime.now())
-                                .changedBy("SYSTEM")
-                                .build();
-                historyRepository.save(history);
-
-                // Publish low stock alert if below threshold (e.g., 5)
-                if (variant.getStockQuantity() < 5) {
-                        publishStockAlert(variant);
-                }
+                // Logic moved to warehouse-service
         }
 
         private void publishStockAlert(ProductVariant variant) {
@@ -298,7 +259,7 @@ public class ProductServiceImpl implements ProductService {
                                         variant.getId(),
                                         variant.getSku(),
                                         variant.getProduct().getName(),
-                                        variant.getStockQuantity());
+                                        0); // Threshold check moved to warehouse
 
                         rabbitTemplate.convertAndSend(
                                         com.phonenexus.products.config.RabbitMQConfig.EXCHANGE,
@@ -314,27 +275,7 @@ public class ProductServiceImpl implements ProductService {
         @Transactional
         @CacheEvict(value = "products", key = "#variantRepository.findByIdWithLock(#variantId).get().product.id")
         public void increaseStock(UUID variantId, Integer quantity) {
-                // Use findByIdWithLock for atomic restoration
-                ProductVariant variant = variantRepository.findByIdWithLock(variantId)
-                                .orElseThrow(() -> new RuntimeException("Error: Variant not found."));
-
-                variant.setStockQuantity(variant.getStockQuantity() + quantity);
-                variantRepository.save(variant);
-
-                // Log history for stock increase (restock from cancellation)
-                ProductHistory history = ProductHistory.builder()
-                                .productId(variant.getProduct().getId())
-                                .variantId(variant.getId())
-                                .sku(variant.getSku())
-                                .oldPrice(variant.getPrice())
-                                .newPrice(variant.getPrice())
-                                .oldStock(variant.getStockQuantity() - quantity)
-                                .newStock(variant.getStockQuantity())
-                                .actionType("ORDER_RESTORE_STOCK")
-                                .changedAt(LocalDateTime.now())
-                                .changedBy("SYSTEM")
-                                .build();
-                historyRepository.save(history);
+                // Logic moved to warehouse-service
         }
 
         @Override
@@ -405,7 +346,6 @@ public class ProductServiceImpl implements ProductService {
                                 variant.getStorageCapacity(),
                                 variant.getRam(),
                                 variant.getPrice(),
-                                variant.getStockQuantity(),
                                 variant.getImageUrl());
         }
 
@@ -432,9 +372,10 @@ public class ProductServiceImpl implements ProductService {
 
                 List<ProductItem> savedItems = productItemRepository.saveAll(items);
 
-                // Update stock quantity automatically
-                variant.setStockQuantity(variant.getStockQuantity() + savedItems.size());
-                variantRepository.save(variant);
+                // Update stock quantity automatically - Now handled via events to warehouse
+                // service
+                // variant.setStockQuantity(variant.getStockQuantity() + savedItems.size());
+                // variantRepository.save(variant);
 
                 return savedItems.stream()
                                 .map(item -> new ProductItemResponse(

@@ -6,8 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.GenericGenerator;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -52,9 +55,25 @@ public class User extends BaseEntity {
     @Column(length = 20)
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Column(name = "total_spent")
+    private BigDecimal totalSpent = BigDecimal.ZERO;
+
+    @Column(name = "total_orders")
+    private Integer totalOrders = 0;
+
+    @Column(name = "loyalty_points")
+    private Integer loyaltyPoints = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "membership_tier", length = 20)
+    private MembershipTier membershipTier = MembershipTier.NORMAL;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Address> addresses = new ArrayList<>();
 
     public User() {
     }
@@ -191,11 +210,61 @@ public class User extends BaseEntity {
         this.phoneNumber = phoneNumber;
     }
 
+    public BigDecimal getTotalSpent() {
+        return totalSpent;
+    }
+
+    public void setTotalSpent(BigDecimal totalSpent) {
+        this.totalSpent = totalSpent;
+    }
+
+    public Integer getTotalOrders() {
+        return totalOrders;
+    }
+
+    public void setTotalOrders(Integer totalOrders) {
+        this.totalOrders = totalOrders;
+    }
+
+    public Integer getLoyaltyPoints() {
+        return loyaltyPoints;
+    }
+
+    public void setLoyaltyPoints(Integer loyaltyPoints) {
+        this.loyaltyPoints = loyaltyPoints;
+    }
+
+    public MembershipTier getMembershipTier() {
+        return membershipTier;
+    }
+
+    public void setMembershipTier(MembershipTier membershipTier) {
+        this.membershipTier = membershipTier;
+    }
+
     public Set<Role> getRoles() {
         return roles;
     }
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public List<Address> getAddresses() {
+        return addresses;
+    }
+
+    public void setAddresses(List<Address> addresses) {
+        this.addresses = addresses;
+    }
+
+    public void addAddress(Address address) {
+        addresses.add(address);
+        address.setUser(this);
+    }
+
+    public void removeAddress(Address address) {
+        addresses.remove(address);
+        address.setUser(null);
     }
 }

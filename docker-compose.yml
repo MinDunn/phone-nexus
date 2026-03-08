@@ -32,13 +32,24 @@ services:
     ports:
       - "5433:5432"
 
+  # Database for Warehouse
+  warehouse-db:
+    image: postgres:15-alpine
+    container_name: phonenexus-warehouse-db
+    environment:
+      POSTGRES_DB: ${WAREHOUSE_DB_NAME:-warehouse_db}
+      POSTGRES_USER: ${WAREHOUSE_DB_USER:-user}
+      POSTGRES_PASSWORD: ${WAREHOUSE_DB_PASSWORD:-password}
+    ports:
+      - "5434:5432"
+
   # Adminer for DB management
   adminer:
     image: adminer
     container_name: phonenexus-adminer
     restart: always
     ports:
-      - "8080:8080"
+      - "8081:8080"
 
   redis:
     image: redis:alpine

@@ -36,4 +36,10 @@ public class UserController {
             @Valid @RequestBody UpdateProfileRequest request) {
         return authService.updateProfile(userDetails.getId(), request);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<com.phonenexus.identities.payload.response.UserResponse> getUserById(
+            @PathVariable java.util.UUID id) {
+        return ResponseEntity.ok(authService.getUserResponseById(id));
+    }
 }

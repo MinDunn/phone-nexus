@@ -11,13 +11,18 @@ public class UserResponse {
     private String lastName;
     private String phoneNumber;
     private String status;
+    private String membershipTier;
+    private Integer loyaltyPoints;
+    private java.math.BigDecimal totalSpent;
+    private Integer totalOrders;
     private List<String> roles;
 
     public UserResponse() {
     }
 
     public UserResponse(UUID id, String username, String email, String firstName, String lastName,
-            String phoneNumber, String status, List<String> roles) {
+            String phoneNumber, String status, String membershipTier, Integer loyaltyPoints,
+            java.math.BigDecimal totalSpent, Integer totalOrders, List<String> roles) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -25,6 +30,10 @@ public class UserResponse {
         this.lastName = lastName;
         this.phoneNumber = phoneNumber;
         this.status = status;
+        this.membershipTier = membershipTier;
+        this.loyaltyPoints = loyaltyPoints;
+        this.totalSpent = totalSpent;
+        this.totalOrders = totalOrders;
         this.roles = roles;
     }
 
@@ -85,6 +94,38 @@ public class UserResponse {
         this.status = status;
     }
 
+    public String getMembershipTier() {
+        return membershipTier;
+    }
+
+    public void setMembershipTier(String membershipTier) {
+        this.membershipTier = membershipTier;
+    }
+
+    public Integer getLoyaltyPoints() {
+        return loyaltyPoints;
+    }
+
+    public void setLoyaltyPoints(Integer loyaltyPoints) {
+        this.loyaltyPoints = loyaltyPoints;
+    }
+
+    public java.math.BigDecimal getTotalSpent() {
+        return totalSpent;
+    }
+
+    public void setTotalSpent(java.math.BigDecimal totalSpent) {
+        this.totalSpent = totalSpent;
+    }
+
+    public Integer getTotalOrders() {
+        return totalOrders;
+    }
+
+    public void setTotalOrders(Integer totalOrders) {
+        this.totalOrders = totalOrders;
+    }
+
     public List<String> getRoles() {
         return roles;
     }
@@ -105,6 +146,10 @@ public class UserResponse {
         private String lastName;
         private String phoneNumber;
         private String status;
+        private String membershipTier;
+        private Integer loyaltyPoints;
+        private java.math.BigDecimal totalSpent;
+        private Integer totalOrders;
         private List<String> roles;
 
         public UserResponseBuilder id(UUID id) {
@@ -142,13 +187,34 @@ public class UserResponse {
             return this;
         }
 
+        public UserResponseBuilder membershipTier(String membershipTier) {
+            this.membershipTier = membershipTier;
+            return this;
+        }
+
+        public UserResponseBuilder loyaltyPoints(Integer loyaltyPoints) {
+            this.loyaltyPoints = loyaltyPoints;
+            return this;
+        }
+
+        public UserResponseBuilder totalSpent(java.math.BigDecimal totalSpent) {
+            this.totalSpent = totalSpent;
+            return this;
+        }
+
+        public UserResponseBuilder totalOrders(Integer totalOrders) {
+            this.totalOrders = totalOrders;
+            return this;
+        }
+
         public UserResponseBuilder roles(List<String> roles) {
             this.roles = roles;
             return this;
         }
 
         public UserResponse build() {
-            return new UserResponse(id, username, email, firstName, lastName, phoneNumber, status, roles);
+            return new UserResponse(id, username, email, firstName, lastName, phoneNumber, status, membershipTier,
+                    loyaltyPoints, totalSpent, totalOrders, roles);
         }
     }
 }

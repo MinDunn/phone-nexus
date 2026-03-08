@@ -11,6 +11,8 @@ public class OrderRequest {
 
     private String note;
 
+    private String promotionCode;
+
     public OrderRequest() {
     }
 
@@ -36,5 +38,13 @@ public class OrderRequest {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getPromotionCode() {
+        return promotionCode;
+    }
+
+    public void setPromotionCode(String promotionCode) {
+        this.promotionCode = promotionCode;
     }
 }

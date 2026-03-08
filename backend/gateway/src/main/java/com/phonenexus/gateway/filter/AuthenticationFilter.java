@@ -10,6 +10,8 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+import io.jsonwebtoken.Claims;
+
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
@@ -35,18 +37,26 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             }
 
             String authHeader = request.getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                try {
-                    jwtUtils.validateToken(token);
-                } catch (Exception e) {
-                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
-                }
-            } else {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authorization header format");
             }
 
-            return chain.filter(exchange);
+            String token = authHeader.substring(7);
+            try {
+                Claims claims = jwtUtils.validateTokenAndGetClaims(token);
+
+                // Propagate user context to downstream services
+                ServerHttpRequest modifiedRequest = request.mutate()
+                        .header("X-User-Id", claims.getSubject())
+                        .header("X-User-Roles", claims.get("roles", String.class) != null
+                                ? claims.get("roles", String.class)
+                                : "")
+                        .build();
+
+                return chain.filter(exchange.mutate().request(modifiedRequest).build());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token");
+            }
         };
     }
 }

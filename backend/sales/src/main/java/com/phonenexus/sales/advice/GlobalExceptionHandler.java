@@ -1,7 +1,7 @@
 package com.phonenexus.sales.advice;
 
 import com.phonenexus.sales.exception.ResourceNotFoundException;
-import com.phonenexus.sales.payload.response.ErrorMessage;
+import com.phonenexus.sales.payload.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,52 +17,35 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorMessage> handleResourceNotFoundException(ResourceNotFoundException ex,
-            WebRequest request) {
-        ErrorMessage message = new ErrorMessage(
-                HttpStatus.NOT_FOUND.value(),
-                LocalDateTime.now(),
-                ex.getMessage(),
-                request.getDescription(false));
-        return new ResponseEntity<>(message, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ApiResponse<Object>> handleResourceNotFoundException(
+            ResourceNotFoundException ex, WebRequest request) {
+        ApiResponse<Object> response = ApiResponse.error(ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        ApiResponse<Map<String, String>> response = new ApiResponse<>(false, "Validation failed", errors);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorMessage> handleRuntimeException(RuntimeException ex, WebRequest request) {
-        // Map specific runtime messages to Bad Request if appropriate (e.g. stock
-        // errors)
-        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        if (ex.getMessage().contains("stock") || ex.getMessage().contains("empty")) {
-            status = HttpStatus.BAD_REQUEST;
-        }
-
-        ErrorMessage message = new ErrorMessage(
-                status.value(),
-                LocalDateTime.now(),
-                ex.getMessage(),
-                request.getDescription(false));
-        return new ResponseEntity<>(message, status);
+    public ResponseEntity<ApiResponse<Object>> handleRuntimeException(RuntimeException ex, WebRequest request) {
+        ApiResponse<Object> response = ApiResponse.error(ex.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorMessage> handleGlobalException(Exception ex, WebRequest request) {
-        // SECURITY: Hide detailed error message from public response
-        ErrorMessage message = new ErrorMessage(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                LocalDateTime.now(),
-                "An unexpected server error occurred. Please contact support.",
-                request.getDescription(false));
-        return new ResponseEntity<>(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex, WebRequest request) {
+        ApiResponse<Object> response = ApiResponse
+                .error("An unexpected server error occurred. Please contact support.");
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

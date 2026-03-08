@@ -46,9 +46,12 @@ public class CartServiceImpl implements CartService {
                                 .findFirst()
                                 .orElseThrow(() -> new ResourceNotFoundException("Error: Product variant not found."));
 
-                if (variant.getStockQuantity() < request.getQuantity()) {
-                        throw new RuntimeException("Error: Not enough stock.");
-                }
+                // Stock check moved to Order checkout or separate inventory service call
+                /*
+                 * if (variant.getStockQuantity() < request.getQuantity()) {
+                 * throw new RuntimeException("Error: Not enough stock.");
+                 * }
+                 */
 
                 Optional<CartItem> existingItem = cart.getItems().stream()
                                 .filter(item -> item.getVariantId().equals(request.getVariantId()))

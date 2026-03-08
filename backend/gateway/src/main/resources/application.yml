@@ -8,6 +8,7 @@ spring:
   cloud:
     gateway:
       routes:
+        # --- Identities Service ---
         - id: identities-auth-public
           uri: lb://identities-service
           predicates:
@@ -25,17 +26,75 @@ spring:
           filters:
             - AuthenticationFilter
 
+        # --- Products Service (Public GET) ---
         - id: products-service-public
           uri: lb://products-service
           predicates:
-            - Path=/api/v1/products/**
+            - Path=/api/v1/products/**, /api/v1/categories/**, /api/v1/brands/**
             - Method=GET
 
+        # --- Products Service (Protected Write) ---
         - id: products-service-protected
           uri: lb://products-service
           predicates:
-            - Path=/api/v1/products/**
+            - Path=/api/v1/products/**, /api/v1/categories/**, /api/v1/brands/**
             - Method=POST,PUT,DELETE
+          filters:
+            - AuthenticationFilter
+
+        # --- Products Service (Reviews - Protected) ---
+        - id: products-reviews-protected
+          uri: lb://products-service
+          predicates:
+            - Path=/api/v1/reviews/**
+          filters:
+            - AuthenticationFilter
+
+        # --- Products Service (Wishlist - Protected) ---
+        - id: products-wishlist-protected
+          uri: lb://products-service
+          predicates:
+            - Path=/api/v1/wishlist/**
+          filters:
+            - AuthenticationFilter
+
+        # --- Sales Service (Protected) ---
+        - id: sales-service-protected
+          uri: lb://sales-service
+          predicates:
+            - Path=/api/v1/cart/**, /api/v1/orders/**
+          filters:
+            - AuthenticationFilter
+
+        # --- Sales Service (Promotions - Public GET) ---
+        - id: sales-promotions-public
+          uri: lb://sales-service
+          predicates:
+            - Path=/api/v1/promotions/**
+            - Method=GET
+
+        # --- Sales Service (Promotions - Protected Write) ---
+        - id: sales-promotions-protected
+          uri: lb://sales-service
+          predicates:
+            - Path=/api/v1/promotions/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - AuthenticationFilter
+
+        # --- Notifications Service (Protected) ---
+        - id: notifications-service
+          uri: lb://notifications-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - AuthenticationFilter
+
+        # --- Warehouse Service (Protected) ---
+        - id: warehouse-service
+          uri: lb://warehouse-service
+          predicates:
+            - Path=/api/v1/warehouse/**
           filters:
             - AuthenticationFilter
 
@@ -45,4 +104,4 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/

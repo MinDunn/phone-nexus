@@ -13,6 +13,7 @@ import com.phonenexus.identities.payload.request.UpdateProfileRequest;
 import com.phonenexus.identities.payload.response.JwtResponse;
 import com.phonenexus.identities.payload.response.MessageResponse;
 import com.phonenexus.identities.payload.response.TokenRefreshResponse;
+import com.phonenexus.identities.payload.response.UserResponse;
 import com.phonenexus.identities.models.UserLoginHistory;
 import com.phonenexus.identities.models.UserStatus;
 import com.phonenexus.identities.models.VerificationToken;
@@ -281,7 +282,12 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    public UserResponse getUserResponseById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Error: User not found."));
+        return mapToResponse(user);
+    }
+
     public ResponseEntity<?> updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Error: User not found."));
@@ -297,7 +303,7 @@ public class AuthService {
 
     // --- Admin Methods ---
 
-    public org.springframework.data.domain.Page<com.phonenexus.identities.payload.response.UserResponse> getAllUsers(
+    public org.springframework.data.domain.Page<UserResponse> getAllUsers(
             org.springframework.data.domain.Pageable pageable) {
         return userRepository.findAll(pageable).map(this::mapToResponse);
     }
@@ -327,8 +333,8 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    private com.phonenexus.identities.payload.response.UserResponse mapToResponse(User user) {
-        return com.phonenexus.identities.payload.response.UserResponse.builder()
+    private UserResponse mapToResponse(User user) {
+        return UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -336,6 +342,10 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
                 .status(user.getStatus().name())
+                .membershipTier(user.getMembershipTier().name())
+                .loyaltyPoints(user.getLoyaltyPoints())
+                .totalSpent(user.getTotalSpent())
+                .totalOrders(user.getTotalOrders())
                 .roles(user.getRoles().stream().map(r -> r.getName().name()).collect(Collectors.toList()))
                 .build();
     }

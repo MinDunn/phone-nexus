@@ -10,18 +10,16 @@ public class ProductVariantResponse {
     private String storageCapacity;
     private String ram;
     private BigDecimal price;
-    private Integer stockQuantity;
     private String imageUrl;
 
     public ProductVariantResponse(UUID id, String sku, String color, String storageCapacity, String ram,
-            BigDecimal price, Integer stockQuantity, String imageUrl) {
+            BigDecimal price, String imageUrl) {
         this.id = id;
         this.sku = sku;
         this.color = color;
         this.storageCapacity = storageCapacity;
         this.ram = ram;
         this.price = price;
-        this.stockQuantity = stockQuantity;
         this.imageUrl = imageUrl;
     }
 
@@ -71,14 +69,6 @@ public class ProductVariantResponse {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
     }
 
     public String getImageUrl() {

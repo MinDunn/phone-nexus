@@ -64,7 +64,6 @@ public class ProductDataSeeder implements CommandLineRunner {
                                 .color("Natural Titanium")
                                 .storageCapacity("256GB")
                                 .ram("8GB")
-                                .stockQuantity(100)
                                 .price(new BigDecimal("34990000"))
                                 .imageUrl("ip15pm_nat.png")
                                 .build();
@@ -75,7 +74,6 @@ public class ProductDataSeeder implements CommandLineRunner {
                                 .color("Titanium Gray")
                                 .storageCapacity("512GB")
                                 .ram("12GB")
-                                .stockQuantity(50)
                                 .price(new BigDecimal("33990000"))
                                 .imageUrl("s24u_gry.png")
                                 .build();

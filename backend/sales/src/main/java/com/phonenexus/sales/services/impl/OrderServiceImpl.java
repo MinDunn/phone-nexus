@@ -56,6 +56,12 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    private com.phonenexus.sales.clients.UserClient userClient;
+
+    @Autowired
+    private com.phonenexus.sales.repositories.PromotionRepository promotionRepository;
+
     @Override
     @Transactional
     public OrderResponse checkout(String userId, OrderRequest request) {
@@ -153,16 +159,67 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Checkout failed during stock reduction: " + e.getMessage());
         }
 
-        // 5. Finalize Order Totals
+        // 5. Finalize Order Totals & Loyalty Points
         BigDecimal shippingFee = DEFAULT_SHIPPING_FEE;
         BigDecimal taxAmount = subTotal.multiply(new BigDecimal("0.1"));
         BigDecimal discountAmount = BigDecimal.ZERO;
+
+        // Apply Promotion if provided
+        if (request.getPromotionCode() != null && !request.getPromotionCode().isBlank()) {
+            var promotion = promotionRepository.findByCode(request.getPromotionCode())
+                    .orElseThrow(() -> new RuntimeException("Error: Invalid promotion code."));
+
+            if (promotion.getStartDate().isAfter(LocalDateTime.now()) ||
+                    promotion.getEndDate().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Error: Promotion code expired.");
+            }
+
+            if (promotion.getUsageLimit() != null && promotion.getUsedCount() >= promotion.getUsageLimit()) {
+                throw new RuntimeException("Error: Promotion code usage limit reached.");
+            }
+
+            if (subTotal.compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                throw new RuntimeException("Error: Order total does not meet minimum requirement for this promotion: "
+                        + promotion.getMinimumOrderAmount());
+            }
+
+            if (promotion.isPercentage()) {
+                discountAmount = subTotal.multiply(promotion.getDiscountAmount().divide(new BigDecimal("100")));
+            } else {
+                discountAmount = promotion.getDiscountAmount();
+            }
+            // Cap discount to subtotal
+            if (discountAmount.compareTo(subTotal) > 0) {
+                discountAmount = subTotal;
+            }
+
+            // Update usage count
+            promotion.setUsedCount(promotion.getUsedCount() + 1);
+            promotionRepository.save(promotion);
+        }
+
         order.setTotalAmount(subTotal.add(shippingFee).add(taxAmount).subtract(discountAmount));
         order.setShippingFee(shippingFee);
         order.setTaxAmount(taxAmount);
         order.setDiscountAmount(discountAmount);
 
-        // orderRepository.save(order); -> Managed by Transactional
+        // Calculate Loyalty Points: 1,000,000 VND = 10 pts (100k = 1pt)
+        try {
+            var user = userClient.getUserById(UUID.fromString(userId));
+            double multiplier = switch (user.getMembershipTier()) {
+                case "SILVER" -> 1.1;
+                case "GOLD" -> 1.2;
+                case "DIAMOND" -> 1.5;
+                default -> 1.0;
+            };
+            // Points = (Total / 100,000) * multiplier
+            int basePoints = subTotal.divide(new BigDecimal("100000"), 0, java.math.RoundingMode.DOWN).intValue();
+            int finalPoints = (int) (basePoints * multiplier);
+            order.setLoyaltyPoints(finalPoints);
+        } catch (Exception e) {
+            log.error("Failed to calculate loyalty points for user {}: {}", userId, e.getMessage());
+            order.setLoyaltyPoints(0);
+        }
 
         // Log history
         historyRepository.save(com.phonenexus.sales.models.OrderStatusHistory.builder()
@@ -413,6 +470,24 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
+            // Earn Loyalty Points
+            if (order.getLoyaltyPoints() > 0) {
+                try {
+                    com.phonenexus.sales.events.LoyaltyPointsEvent pointsEvent = new com.phonenexus.sales.events.LoyaltyPointsEvent(
+                            order.getUserId(),
+                            order.getLoyaltyPoints(),
+                            order.getTotalAmount(),
+                            order.getId().toString());
+
+                    rabbitTemplate.convertAndSend(
+                            com.phonenexus.sales.config.RabbitMQConfig.EXCHANGE,
+                            "loyalty.points.earned",
+                            pointsEvent);
+                } catch (Exception e) {
+                    log.error("Failed to publish loyalty points event for order {}", orderId, e);
+                }
+            }
+
             // Publish Notification Event for Order Confirmation (PAID)
             publishOrderEvent(order);
         } else {
@@ -452,6 +527,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getTaxAmount(),
                 order.getDiscountAmount(),
                 order.getNote(),
+                order.getLoyaltyPoints(),
                 order.getCreatedAt(),
                 items);
     }

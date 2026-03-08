@@ -38,6 +38,9 @@ public class Product extends BaseEntity {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductVariant> variants = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews = new ArrayList<>();
+
     public Product() {
     }
 
@@ -128,6 +131,24 @@ public class Product extends BaseEntity {
             this.viewCount = 0L;
         }
         this.viewCount++;
+    }
+
+    public List<Review> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<Review> reviews) {
+        this.reviews = reviews;
+    }
+
+    public void addReview(Review review) {
+        reviews.add(review);
+        review.setProduct(this);
+    }
+
+    public void removeReview(Review review) {
+        reviews.remove(review);
+        review.setProduct(null);
     }
 
     // Builder Pattern

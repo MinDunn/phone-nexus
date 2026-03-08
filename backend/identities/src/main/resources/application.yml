@@ -2,9 +2,10 @@ spring:
   application:
     name: identities-service
   datasource:
-    url: jdbc:postgresql://localhost:5431/${IDENTITIES_DB_NAME:identities_db}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5431/${IDENTITIES_DB_NAME:identities_db}
     username: ${IDENTITIES_DB_USER:user}
     password: ${IDENTITIES_DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -12,6 +13,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   mail:
     host: smtp.gmail.com
     port: 587
@@ -23,6 +25,11 @@ spring:
           auth: true
           starttls:
             enable: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 server:
   port: 8081
@@ -30,8 +37,7 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: false # For now, until discovery is up
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
 
 # Security JWT configuration
 phonenexus:
@@ -40,3 +46,19 @@ phonenexus:
     jwtExpirationMs: ${JWT_EXPIRATION_MS:3600000}
     jwtRefreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:86400000}
     verificationUrl: ${VERIFICATION_URL:http://localhost:8081/api/auth/verify}
+
+# Swagger UI Configuration
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  tracing:
+    sampling:
+      probability: 1.0

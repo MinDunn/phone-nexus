@@ -7,8 +7,6 @@ public class ProductVariantExternalResponse {
     private UUID id;
     private String sku;
     private BigDecimal price;
-    private BigDecimal costPrice;
-    private Integer stockQuantity;
     private String imageUrl;
 
     public ProductVariantExternalResponse() {
@@ -36,22 +34,6 @@ public class ProductVariantExternalResponse {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
-    }
-
-    public BigDecimal getCostPrice() {
-        return costPrice;
-    }
-
-    public void setCostPrice(BigDecimal costPrice) {
-        this.costPrice = costPrice;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
     }
 
     public String getImageUrl() {

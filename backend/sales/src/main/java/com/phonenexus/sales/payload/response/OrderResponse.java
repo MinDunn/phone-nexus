@@ -17,12 +17,13 @@ public class OrderResponse {
     private BigDecimal taxAmount;
     private BigDecimal discountAmount;
     private String note;
+    private Integer loyaltyPoints;
     private java.time.LocalDateTime createdAt;
     private List<OrderItemResponse> items;
 
     public OrderResponse(UUID id, String userId, BigDecimal totalAmount, OrderStatus status, String paymentMethod,
             String shippingAddress, BigDecimal shippingFee, BigDecimal taxAmount, BigDecimal discountAmount,
-            String note, LocalDateTime createdAt, List<OrderItemResponse> items) {
+            String note, Integer loyaltyPoints, LocalDateTime createdAt, List<OrderItemResponse> items) {
         this.id = id;
         this.userId = userId;
         this.totalAmount = totalAmount;
@@ -33,6 +34,7 @@ public class OrderResponse {
         this.taxAmount = taxAmount;
         this.discountAmount = discountAmount;
         this.note = note;
+        this.loyaltyPoints = loyaltyPoints;
         this.createdAt = createdAt;
         this.items = items;
     }
@@ -75,6 +77,10 @@ public class OrderResponse {
 
     public BigDecimal getDiscountAmount() {
         return discountAmount;
+    }
+
+    public Integer getLoyaltyPoints() {
+        return loyaltyPoints;
     }
 
     public LocalDateTime getCreatedAt() {

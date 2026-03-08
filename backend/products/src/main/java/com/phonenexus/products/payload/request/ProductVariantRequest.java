@@ -19,13 +19,6 @@ public class ProductVariantRequest {
     @PositiveOrZero
     private BigDecimal price;
 
-    @PositiveOrZero
-    private BigDecimal costPrice;
-
-    @NotNull
-    @PositiveOrZero
-    private Integer stockQuantity;
-
     private String imageUrl;
 
     public String getSku() {
@@ -66,22 +59,6 @@ public class ProductVariantRequest {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
-    }
-
-    public BigDecimal getCostPrice() {
-        return costPrice;
-    }
-
-    public void setCostPrice(BigDecimal costPrice) {
-        this.costPrice = costPrice;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
     }
 
     public String getImageUrl() {

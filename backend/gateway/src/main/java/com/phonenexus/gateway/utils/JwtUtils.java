@@ -1,5 +1,6 @@
 package com.phonenexus.gateway.utils;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -16,6 +17,14 @@ public class JwtUtils {
 
     public void validateToken(final String token) {
         Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+    }
+
+    public Claims validateTokenAndGetClaims(final String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     private SecretKey getSigningKey() {

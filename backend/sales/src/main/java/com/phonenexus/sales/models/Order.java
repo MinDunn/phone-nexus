@@ -42,6 +42,9 @@ public class Order extends BaseEntity {
     @Column(length = 500)
     private String note;
 
+    @Column(name = "loyalty_points")
+    private Integer loyaltyPoints = 0;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -58,6 +61,7 @@ public class Order extends BaseEntity {
         this.taxAmount = builder.taxAmount;
         this.discountAmount = builder.discountAmount;
         this.note = builder.note;
+        this.loyaltyPoints = builder.loyaltyPoints;
     }
 
     // Getters and Setters
@@ -141,6 +145,14 @@ public class Order extends BaseEntity {
         this.discountAmount = discountAmount;
     }
 
+    public Integer getLoyaltyPoints() {
+        return loyaltyPoints;
+    }
+
+    public void setLoyaltyPoints(Integer loyaltyPoints) {
+        this.loyaltyPoints = loyaltyPoints;
+    }
+
     public List<OrderItem> getItems() {
         return items;
     }
@@ -168,6 +180,7 @@ public class Order extends BaseEntity {
         private BigDecimal taxAmount = BigDecimal.ZERO;
         private BigDecimal discountAmount = BigDecimal.ZERO;
         private String note;
+        private Integer loyaltyPoints = 0;
 
         public Builder userId(String userId) {
             this.userId = userId;
@@ -211,6 +224,11 @@ public class Order extends BaseEntity {
 
         public Builder discountAmount(BigDecimal discountAmount) {
             this.discountAmount = discountAmount;
+            return this;
+        }
+
+        public Builder loyaltyPoints(Integer loyaltyPoints) {
+            this.loyaltyPoints = loyaltyPoints;
             return this;
         }
 
